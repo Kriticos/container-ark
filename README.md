@@ -1,4 +1,4 @@
-# CTR Process
+# CTR Akr
 
 Sistema de gestão de procedimentos (SOP) baseado em Laravel, com controle de acesso por perfil/setor, versionamento, aprovação, publicação e auditoria.
 
