@@ -1,178 +1,305 @@
-# CTR Akr
+# CTR Ark-nology
 
-Sistema de gestão de procedimentos (SOP) baseado em Laravel, com controle de acesso por perfil/setor, versionamento, aprovação, publicação e auditoria.
+Sistema de gestao de procedimentos (SOP) baseado em Laravel, com controle de acesso por perfil e setor, versionamento, aprovacao, publicacao e auditoria.
 
-## Visão Geral
+## Visao Geral
 
-O projeto evoluiu da base administrativa LaraSaaS e hoje é focado em:
+O projeto evoluiu da base administrativa LaraSaaS e hoje atende principalmente:
 
-- cadastro e manutenção de procedimentos por setor
-- fluxo de aprovação (`Revisão` -> `Aprovado` -> `Publicado`)
-- histórico de versões e restauração
-- auditoria de ações (quem fez, quando, em qual procedimento)
-- dashboard operacional com métricas reais
-- notificações dinâmicas no topo (alimentadas por auditoria)
+- cadastro e manutencao de procedimentos por setor
+- fluxo de aprovacao com trilha de auditoria
+- versionamento e restauracao de conteudo
+- dashboard operacional com metricas reais
+- notificacoes dinamicas baseadas em eventos do sistema
 
 ## Funcionalidades Principais
 
 ### Procedimentos
-- CRUD completo de procedimentos
-- vínculo de procedimento com múltiplos setores
-- versionamento automático a cada atualização
-- comparação entre versões
-- restauração de versões anteriores
-- publicação controlada por permissão
 
-### Fluxo de aprovação
+- CRUD completo de procedimentos
+- vinculacao com multiplos setores
+- versionamento automatico a cada atualizacao
+- comparacao entre versoes
+- restauracao de versoes anteriores
+- publicacao controlada por permissao
+
+### Fluxo de aprovacao
+
 - status internos no backend: `draft`, `in_review`, `approved`, `published`
-- filtro de UI simplificado: `Revisão`, `Aprovado`, `Publicado`
-- `Revisão` agrupa `draft + in_review`
-- ao reprovar, o item retorna ao ciclo de revisão (com trilha registrada)
+- filtro de UI simplificado: `Revisao`, `Aprovado`, `Publicado`
+- retorno ao ciclo de revisao em caso de reprovacao
+- trilha completa de alteracoes e aprovacoes
 
 ### Editor Markdown com imagens
-- upload protegido de imagens no editor
-- preview em tempo real (render seguro)
-- suporte a tamanho por imagem no markdown:
+
+- upload protegido de imagens
+- preview em tempo real
+- suporte a largura customizada por imagem
 
 ```md
 ![Minha imagem](http://localhost:8080/painel/procedures/temp-images/arquivo.jpg){width=420}
 ```
 
-### Dashboard
-- cards de métricas em layout 3x2
-- card “Sem aprovação” abre lista filtrada em revisão
-- gráficos por setor/status
+### Dashboard e notificacoes
+
+- cards de metricas em layout operacional
+- graficos por setor e status
 - ranking de procedimentos mais acessados
-- movimentações recentes de auditoria
+- dropdown de notificacoes com dados reais de auditoria
 
-### Notificações
-- dropdown de notificações no topo com dados reais de auditoria
-- respeita escopo de setor para usuários não-admin
-- links diretos para o procedimento afetado
+### ACL e seguranca
 
-### ACL / Segurança
-- ACL por módulos, permissões, roles e usuários
-- escopo por setor (admin, gestor, editor, leitor)
-- middleware de autenticação + autorização por rota
+- ACL por modulos, permissoes, roles e usuarios
+- escopo por setor para usuarios nao administradores
+- middleware de autenticacao e autorizacao por rota
 
 ## Stack
 
 ### Backend
+
 - PHP 8.4
 - Laravel 12
 - MySQL 8
 
 ### Frontend
-- Blade + Alpine.js
+
+- Blade
+- Alpine.js
 - Tailwind CSS
 - Chart.js
-- Toast UI Editor (markdown)
+- Toast UI Editor
 
-### DevOps / Qualidade
-- Docker Compose (Sail runtime)
-- Pest (testes)
+### DevOps e qualidade
+
+- Docker Compose com Laravel Sail
+- Pest
 - Laravel Pint
-- Larastan/PHPStan
+- Larastan / PHPStan
 
 ## Requisitos
 
-- Docker + Docker Compose
+- Docker
+- Docker Compose
 - Git
 
-## Setup Rápido (Nova VM)
+## Inicio Rapido
 
-Use o guia dedicado:
+Use o guia dedicado para provisionamento inicial:
 
 - [SETUP_NOVA_VM.md](docs/SETUP_NOVA_VM.md)
 
-Resumo dos passos:
+Passos basicos:
 
 ```bash
 git clone <repo>
 cd ctr-process
 cp .env.example .env
 
-# instalar dependências PHP (se necessário no primeiro setup)
 docker run --rm \
   -u "$(id -u):$(id -g)" \
   -v "$(pwd):/var/www/html" \
   -w /var/www/html \
   laravelsail/php84-composer:latest \
   composer install --ignore-platform-reqs
-
-# subir serviços
-docker compose up -d
 ```
 
-O projeto usa `docker-entrypoint.sh`, que automatiza tarefas de bootstrap no container `laravel.test`.
+O projeto usa `docker-entrypoint.sh`, que automatiza parte do bootstrap no container `laravel.test`.
 
-## Acesso
+## Modos de Ambiente
 
-- Aplicação: `http://localhost:8080`
-- Vite (dev): `http://localhost:5173`
+O projeto suporta dois modos principais com Docker Compose.
 
-## Banco e Testes
+### 1. Desenvolvimento local com MySQL em container
 
-Este projeto usa banco de testes em container dedicado (`mysql.test`).
+Use o `compose.yaml` padrao:
 
-### Rodar testes (recomendado)
+```bash
+docker compose up -d --build
+```
+
+Esse modo sobe:
+
+- `laravel.test`
+- `scheduler`
+- `mysql`
+- `mysql.test`
+
+### 2. Aplicacao com banco externo
+
+Use o arquivo de override [compose.external-db.yaml](compose.external-db.yaml):
+
+```bash
+docker compose -f compose.yaml -f compose.external-db.yaml up -d --build --no-deps laravel.test scheduler
+```
+
+Esse modo sobe apenas:
+
+- `laravel.test`
+- `scheduler`
+
+Os containers `mysql` e `mysql.test` nao sao iniciados.
+
+## Configuracao de Banco de Dados
+
+### Banco local em container
+
+No modo padrao, a aplicacao usa o servico `mysql` definido no `compose.yaml`. Nesse caso, o `.env` normalmente fica com:
+
+```env
+DB_CONNECTION=mysql
+DB_HOST=mysql
+DB_PORT=3306
+DB_DATABASE=larasaas
+DB_USERNAME=sail
+DB_PASSWORD=password
+```
+
+### Banco externo
+
+Para usar um banco externo, ajuste o `.env` com os dados reais do servidor:
+
+```env
+DB_CONNECTION=mysql
+DB_HOST=seu-host-ou-ip
+DB_PORT=3306
+DB_DATABASE=seu_banco
+DB_USERNAME=seu_usuario
+DB_PASSWORD=sua_senha
+```
+
+Pontos importantes:
+
+- `DB_CONNECTION` deve ser o driver do Laravel, por exemplo `mysql`, e nao o nome do container
+- `DB_HOST` deve ser o host, IP ou DNS do banco
+- `DB_HOST=mysql` so faz sentido quando a aplicacao usa o container `mysql` do Compose
+- se o banco estiver na maquina host e a aplicacao rodar em container, normalmente o host sera `host.docker.internal`
+
+Antes do primeiro `php artisan migrate`, o banco externo ja precisa estar preparado. O Laravel cria as tabelas, mas nao cria automaticamente:
+
+- o banco de dados
+- o usuario do banco
+- as permissoes de acesso
+
+Exemplo de preparacao no MySQL externo:
+
+```sql
+CREATE DATABASE arknowledge
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+
+CREATE USER 'ctr_user'@'%' IDENTIFIED BY 'sua_senha_forte';
+
+GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, INDEX, DROP
+ON arknowledge.* TO 'ctr_user'@'%';
+
+FLUSH PRIVILEGES;
+```
+
+Depois disso, ajuste o `.env` para usar os mesmos valores:
+
+```env
+DB_CONNECTION=mysql
+DB_HOST=seu-host-ou-ip
+DB_PORT=3306
+DB_DATABASE=arknowledge
+DB_USERNAME=ctr_user
+DB_PASSWORD=sua_senha_forte
+```
+
+Depois de ajustar o `.env`, limpe o cache de configuracao:
+
+```bash
+docker compose exec -T laravel.test php artisan config:clear
+```
+
+Se estiver em ambiente novo, crie a estrutura das tabelas com:
+
+```bash
+docker compose exec -T laravel.test php artisan migrate
+```
+
+Em banco novo, executar apenas `migrate` nao basta para liberar o acesso administrativo. Depois das migrations, rode tambem:
+
+```bash
+docker compose exec -T laravel.test php artisan db:seed
+```
+
+Esse passo cria ou atualiza:
+
+- usuario administrador padrao
+- roles e permissoes
+- modulos
+- menus
+
+As credenciais iniciais do admin sao lidas do `.env`:
+
+```env
+ADMIN_NAME="Administrador"
+ADMIN_EMAIL="admin@larasaas.com"
+ADMIN_PASSWORD="P@ssw0rd"
+```
+
+Se preferir outro usuario inicial, altere esses valores antes de rodar o `db:seed`.
+
+## Acesso Local
+
+- Aplicacao: `http://localhost:8080`
+- Vite: `http://localhost:5173`
+
+## Testes
+
+O projeto usa um banco de testes dedicado em container (`mysql.test`) no fluxo padrao.
+
+### Rodar testes
 
 ```bash
 docker compose exec -T laravel.test php artisan test
 ```
 
-### Rodar suíte específica
+### Rodar uma suite especifica
 
 ```bash
 docker compose exec -T laravel.test php artisan test tests/Feature/Http/Controllers/Admin/DashboardControllerTest.php
 ```
 
-Documentação complementar:
+### Banco externo e testes
+
+O arquivo `phpunit.xml` esta configurado para usar `mysql.test`. Se voce quiser rodar testes com banco externo, ajuste nele:
+
+- `DB_CONNECTION`
+- `DB_HOST`
+- `DB_PORT`
+- `DB_DATABASE`
+
+Se isso nao for alterado, o ambiente de testes continuara esperando o container `mysql.test`.
+
+Documentacao complementar:
 
 - [TESTING_DATABASE.md](docs/TESTING_DATABASE.md)
 
-## Comandos Úteis
+## Comandos Uteis
 
 ```bash
-# Artisan
 docker compose exec -T laravel.test php artisan route:list
-
-# Migrations
 docker compose exec -T laravel.test php artisan migrate --force
-
-# Seed
 docker compose exec -T laravel.test php artisan db:seed
-
-# Pint
 docker compose exec -T laravel.test vendor/bin/pint
-
-# PHPStan
 docker compose exec -T laravel.test vendor/bin/phpstan analyse
 ```
 
-## Estrutura (resumo)
+## Estrutura do Projeto
 
 ```text
 app/
-  Http/Controllers/Admin/
-  Models/
 database/
-  migrations/
-  seeders/
-resources/views/
-  admin/
-  layouts/
+resources/
 routes/
-  web.php
 docs/
-  SETUP_NOVA_VM.md
-  DEVELOPER_GUIDE.md
-  ACL.md
-  TESTING_DATABASE.md
 compose.yaml
+compose.external-db.yaml
 ```
 
-## Documentação do Projeto
+## Documentacao
 
 - [Guia do desenvolvedor](docs/DEVELOPER_GUIDE.md)
 - [ACL](docs/ACL.md)
@@ -180,24 +307,16 @@ compose.yaml
 - [Scheduler](docs/SCHEDULER.md)
 - [SonarQube](docs/SONARQUBE.md)
 
-## Observações
+## Observacoes
 
 - Evite rodar testes diretamente no host quando o alvo for banco containerizado.
-- Para consistência do time, prefira comandos via `docker compose exec -T laravel.test ...`.
+- Para consistencia do time, prefira comandos via `docker compose exec -T laravel.test ...`.
 
-## Produção (Deploy)
+## Producao
 
-Esta seção descreve um caminho objetivo para colocar o projeto em produção em uma VM Linux usando Docker Compose.
+Esta secao resume um caminho objetivo para deploy em VM Linux usando Docker Compose.
 
-### 1. Pré-requisitos de infraestrutura
-
-- VM Linux atualizada (Ubuntu 22.04+ recomendado)
-- Docker Engine + Docker Compose plugin
-- domínio apontando para a VM
-- proxy reverso com TLS (Nginx, Traefik ou Cloudflare Tunnel)
-- acesso a backup externo (S3, bucket compatível ou storage remoto)
-
-### 2. Clonar e preparar ambiente
+### 1. Preparacao
 
 ```bash
 git clone <repo>
@@ -205,7 +324,7 @@ cd ctr-process
 cp .env.example .env
 ```
 
-Ajuste o `.env` para produção (mínimo):
+Minimo recomendado no `.env`:
 
 ```env
 APP_ENV=production
@@ -213,10 +332,10 @@ APP_DEBUG=false
 APP_URL=https://seu-dominio.com
 
 DB_CONNECTION=mysql
-DB_HOST=mysql
+DB_HOST=seu-host-ou-ip
 DB_PORT=3306
 DB_DATABASE=ctr_process
-DB_USERNAME=sail
+DB_USERNAME=seu_usuario
 DB_PASSWORD=senha_forte
 
 CACHE_STORE=database
@@ -224,76 +343,64 @@ SESSION_DRIVER=database
 QUEUE_CONNECTION=database
 ```
 
-Recomendações:
-- use senha forte para banco
-- configure SMTP real para recuperação de senha/notificações
-- mantenha `APP_DEBUG=false`
+### 2. Subida dos containers
 
-### 3. Subir containers
+Com banco externo:
+
+```bash
+docker compose -f compose.yaml -f compose.external-db.yaml up -d --build --no-deps laravel.test scheduler
+```
+
+Com banco local do Compose:
 
 ```bash
 docker compose up -d --build
 ```
 
-### 4. Inicialização da aplicação
+### 3. Inicializacao da aplicacao
 
 ```bash
-# gera chave (uma vez)
 docker compose exec -T laravel.test php artisan key:generate
-
-# migra banco em modo seguro para produção
 docker compose exec -T laravel.test php artisan migrate --force
-
-# seed inicial (roles/permissões/admin), se necessário
 docker compose exec -T laravel.test php artisan db:seed --force
-
-# cache de config/rotas/views
 docker compose exec -T laravel.test php artisan config:cache
 docker compose exec -T laravel.test php artisan route:cache
 docker compose exec -T laravel.test php artisan view:cache
 ```
 
-### 5. Build de frontend
+### 4. Build de frontend
 
 ```bash
 docker compose exec -T laravel.test npm ci
 docker compose exec -T laravel.test npm run build
 ```
 
-### 6. Scheduler e filas
+### 5. Scheduler e filas
 
-O serviço `scheduler` já está definido no `compose.yaml`.
+O servico `scheduler` ja existe no `compose.yaml`.
 
-Se usar filas assíncronas, rode também um worker dedicado (recomendado):
+Se usar filas assincronas, rode tambem um worker dedicado:
 
 ```bash
 docker compose exec -d laravel.test php artisan queue:work --sleep=1 --tries=3 --timeout=90
 ```
 
-Para produção, ideal é criar um serviço próprio de worker no `compose.yaml`.
+### 6. Operacao
 
-### 7. Proxy reverso e SSL
+Boas praticas recomendadas:
 
-- exponha somente o proxy (80/443) para internet
-- mantenha containers internos em rede privada
-- habilite TLS com Let's Encrypt
-- redirecione HTTP -> HTTPS
+- exponha apenas o proxy reverso na internet
+- mantenha TLS habilitado
+- faca backup de banco e `storage/app`
+- teste restauracao periodicamente
 
-### 8. Backup e recuperação
-
-Mínimo recomendado:
-- dump diário do MySQL
-- cópia de `storage/app` (arquivos enviados)
-- retenção de pelo menos 7-14 dias
-- teste de restauração periódico
-
-Exemplo de dump manual:
+Exemplo de dump manual quando o MySQL estiver em container local:
 
 ```bash
 docker compose exec -T mysql mysqldump -u sail -p ctr_process > backup-$(date +%F).sql
 ```
 
-### 9. Atualização de versão (rolling simples)
+### 7. Atualizacao
 
 ```bash
 git pull
@@ -304,12 +411,12 @@ docker compose exec -T laravel.test php artisan route:cache
 docker compose exec -T laravel.test php artisan view:cache
 ```
 
-### 10. Checklist pós-deploy
+### 8. Checklist pos-deploy
 
-- login funcionando em `https://seu-dominio.com`
-- criação/edição de procedimento OK
+- login funcionando
+- criacao e edicao de procedimento OK
 - upload de imagem markdown OK
 - dashboard carregando sem erro
-- notificações no topo exibindo auditoria
+- notificacoes exibindo auditoria
 - scheduler ativo
 - backup validado
